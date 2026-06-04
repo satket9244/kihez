@@ -24,6 +24,13 @@ class NotificationScheduler(private val context: Context) {
     fun getFixedIntervalMillis(): Long =
         prefs.getLong(KEY_FIXED_INTERVAL_MILLIS, DEFAULT_FIXED_INTERVAL_MILLIS)
 
+    fun getCustomNotificationText(): String =
+        prefs.getString(KEY_CUSTOM_NOTIFICATION_TEXT, NOTIFICATION_TEXT)!!
+
+    fun setCustomNotificationText(text: String) {
+        prefs.edit().putString(KEY_CUSTOM_NOTIFICATION_TEXT, text).apply()
+    }
+
     fun start(mode: Mode, fixedIntervalMillis: Long) {
         prefs.edit()
             .putBoolean(KEY_RUNNING, true)
@@ -93,6 +100,7 @@ class NotificationScheduler(private val context: Context) {
         private const val KEY_MODE = "mode"
         private const val KEY_FIXED_INTERVAL_MILLIS = "fixed_interval_millis"
         private const val KEY_NEXT_TRIGGER_AT_MILLIS = "next_trigger_at_millis"
+        private const val KEY_CUSTOM_NOTIFICATION_TEXT = "custom_notification_text"
 
         const val ACTION_ALARM = "com.example.kihez.ACTION_ALARM"
         const val NOTIFICATION_TEXT = "Kihez tartozik ez?"

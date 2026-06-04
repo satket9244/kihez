@@ -12,18 +12,33 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.kihez.scheduler.NotificationScheduler
 import com.example.kihez.scheduler.NotificationScheduler.Mode
-import com.example.kihez.ui.KihezScreen
-import com.example.kihez.ui.KihezUiState
 import com.example.kihez.ui.theme.KihezTheme
 
 class MainActivity : ComponentActivity() {
@@ -74,7 +89,9 @@ private fun MainScreen(context: Context) {
 
     val requestNotificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { }
+    ) {
+        // no-op; app keeps scheduling regardless
+    }
 
     val requestExactAlarmAccess = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -120,34 +137,85 @@ private fun MainScreen(context: Context) {
         running = false
     }
 
+    val fixedValid = fixedIntervalMillisOrNull() != null
+
     KihezTheme {
-        KihezScreen(
-            modifier = Modifier.fillMaxSize(),
-            state = KihezUiState(
-                running = running,
-                mode = mode,
-                hoursText = hoursText,
-                minutesText = minutesText,
-                fixedValid = fixedIntervalMillisOrNull() != null,
-                hasNotificationPermission = hasNotificationPermission(),
-                canExactAlarms = canExactAlarms()
-            ),
-            onHoursChange = { hoursText = it.filter(Char::isDigit) },
-            onMinutesChange = { value ->
-                val digits = value.filter(Char::isDigit)
-                minutesText = if (digits.isEmpty()) {
-                    ""
-                } else {
-                    (digits.toIntOrNull() ?: 0).coerceIn(0, 59).toString()
+        Scaffold { padding ->
+            Column(
+                modifier = Modifier.padding(padding).padding(20.dp),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text("KIHEZ", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(16.dp))
+
+                Text("Interval mode")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = mode == Mode.FIXED,
+                        onClick = {
+                            mode = Mode.FIXED
+                            if (running) startScheduling()
+                        }
+                    )
+                    Text("Fixed")
                 }
-            },
-            onModeChange = { newMode ->
-                mode = newMode
-                if (running) startScheduling()
-            },
-            onToggleRunning = {
-                if (running) stopScheduling() else startScheduling()
+
+                if (mode == Mode.FIXED) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Hours")
+                    TextField(
+                        value = hoursText,
+                        onValueChange = { hoursText = it.filter(Char::isDigit) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("Minutes (0-59)")
+                    TextField(
+                        value = minutesText,
+                        onValueChange = { value ->
+                            val digits = value.filter(Char::isDigit)
+                            if (digits.isEmpty()) {
+                                minutesText = ""
+                            } else {
+                                val parsed = digits.toIntOrNull() ?: 0
+                                minutesText = parsed.coerceIn(0, 59).toString()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        isError = !fixedValid
+                    )
+                    if (!fixedValid) {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Enter at least 1 minute total.", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = mode == Mode.RANDOM,
+                        onClick = {
+                            mode = Mode.RANDOM
+                            if (running) startScheduling()
+                        }
+                    )
+                    Text("Random (15 min - 4 hours)")
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Button(onClick = { if (running) stopScheduling() else startScheduling() }) {
+                    Text(if (running) "Stop" else "Start")
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text("Running: $running")
+                Text("POST_NOTIFICATIONS: ${hasNotificationPermission()}")
+                Text("Exact alarms allowed: ${canExactAlarms()}")
             }
-        )
+        }
     }
 }
