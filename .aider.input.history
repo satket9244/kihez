@@ -18,3 +18,33 @@
 
 # 2026-06-04 13:43:16.731468
 +Itt egy feladat a projekthez: Please change the number type in box at the fixed interval to two number picker wheel. And use the same deep green color which is used for the button.
+
+# 2026-06-04 18:43:05.272130
++Itt egy feladat a projekthez: Please fix the timer settings UI. Currently, the hour and minute picker wheels are only visual; they cannot be scrolled, rotated, or changed by the user.
++
++Task:
++Implement a fully functional, scrollable Wheel/Scroll Picker for both hours (0-23) and minutes (0-59) using Jetpack Compose.
++
++Technical requirements for the AI:
++1. Use a scrollable container like  with a  or an appropriate custom  implementation where the user can drag/scroll to change values.
++2. Implement proper state management: ensure the selected values update correctly in the screen's UI State (or pass the data via a state-hoisting callback when changed).
++3. Ensure snapping behavior: when the user finishes scrolling, the wheel must snap to the nearest integer value (using ).
++4. Keep the beautiful layout and styling that was implemented previously, but ensure the custom component is fully interactive and responsive to touch/drag gestures.
++
++Please modify the existing UI layout and state handling files to make the pickers active and scrollable.
++
+
+# 2026-06-04 18:43:05.272178
++Itt egy feladat a projekthez: Please fix the timer settings UI. Currently, the hour and minute picker wheels are only visual; they cannot be scrolled, rotated, or changed by the user.
++
++Task:
++Implement a fully functional, scrollable Wheel/Scroll Picker for both hours (0-23) and minutes (0-59) using Jetpack Compose.
++
++Technical requirements for the AI:
++1. Use a scrollable container like  with a  or an appropriate custom  implementation where the user can drag/scroll to change values.
++2. Implement proper state management: ensure the selected values update correctly in the screen's UI State (or pass the data via a state-hoisting callback when changed).
++3. Ensure snapping behavior: when the user finishes scrolling, the wheel must snap to the nearest integer value (using ).
++4. Keep the beautiful layout and styling that was implemented previously, but ensure the custom component is fully interactive and responsive to touch/drag gestures.
++
++Please modify the existing UI layout and state handling files to make the pickers active and scrollable.
++
