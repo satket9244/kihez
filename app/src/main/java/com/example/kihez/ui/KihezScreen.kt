@@ -549,7 +549,7 @@ private fun StatusSection(
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (running) Primary else MaterialTheme.color徽rScheme.error
+                                    if (running) Primary else MaterialTheme.colorScheme.error
                                 )
                         )
                     },
