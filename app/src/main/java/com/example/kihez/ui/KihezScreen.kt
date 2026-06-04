@@ -8,12 +8,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,22 +46,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.example.kihez.scheduler.NotificationScheduler.Mode
 import com.example.kihez.ui.theme.GlassWhite
 import com.example.kihez.ui.theme.OutlineVariant
 import com.example.kihez.ui.theme.Primary
 import com.example.kihez.ui.theme.Surface as KihezSurface
 import com.example.kihez.ui.theme.SurfaceContainer
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 data class KihezUiState(
     val running: Boolean,
@@ -370,11 +384,12 @@ private fun TimeInputCard(
         Spacer(modifier = Modifier.height(8.dp))
         
         if (enabled) {
-            // Use number picker for enabled state
+            // Use scrollable number picker for enabled state
             val intValue = value.toIntOrNull() ?: 0
-            NumberPicker(
+            ScrollableNumberPicker(
                 value = intValue,
                 onValueChange = { onValueChange(it.toString()) },
+                maxValue = if (label == "Óra") 23 else 59,
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
@@ -389,21 +404,89 @@ private fun TimeInputCard(
 }
 
 @Composable
-private fun NumberPicker(
+private fun ScrollableNumberPicker(
     value: Int,
     onValueChange: (Int) -> Unit,
+    maxValue: Int,
     modifier: Modifier = Modifier
 ) {
+    val minSize = if (maxValue == 23) 0 else 0
+    val items = (minSize..maxValue).toList()
+    val selectedIndex = items.indexOf(value).coerceIn(0, items.size - 1)
+    
+    val state = rememberScrollState(initial = selectedIndex)
+    val scope = rememberCoroutineScope()
+    
+    val itemHeight = 48.dp
+    val halfItemHeight = itemHeight / 2
+    val visibleItems = 3
+    val centerIndex = 1
+    val totalScrollRange = (itemHeight * (items.size - visibleItems)).roundToPx().toFloat()
+    
     Box(
-        modifier = modifier.height(120.dp),
-        contentAlignment = Alignment.Center
+        modifier = modifier
+            .height(itemHeight * 3)
+            .fillMaxWidth()
     ) {
-        // This is a simplified version - in a real app you would implement a proper number picker
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.headlineMedium,
-            color = Primary
-        )
+        // Center indicator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+                .offset(y = itemHeight)
+                .zIndex(1f)
+        ) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(
+                        width = 2.dp,
+                        color = Primary.copy(alpha = 0.5f)
+                    )
+            )
+        }
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .scrollable(
+                    state = rememberScrollableState { delta ->
+                        scope.launch {
+                            state.scrollBy(-delta)
+                        }
+                        delta
+                    },
+                    orientation = Orientation.Vertical
+                )
+        ) {
+            val currentValue = (state.value / itemHeight.roundToPx()).coerceIn(0, items.size - 1)
+            onValueChange(items[currentValue])
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = halfItemHeight, bottom = halfItemHeight)
+            ) {
+                repeat(items.size) { index ->
+                    val itemValue = items[index]
+                    val itemText = if (itemValue < 10) "0$itemValue" else itemValue.toString()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeight)
+                            .padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = itemText,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Primary
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -466,7 +549,7 @@ private fun StatusSection(
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (running) Primary else MaterialTheme.colorScheme.error
+                                    if (running) Primary else MaterialTheme.color徽rScheme.error
                                 )
                         )
                     },
