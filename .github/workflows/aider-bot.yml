@@ -29,12 +29,11 @@ jobs:
           OPENAI_API_BASE: https://integrate.api.nvidia.com/v1
           OPENAI_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
-          # Konfiguráljuk az Aider-t, hogy az NVIDIA OpenAI-kompatibilis végpontját és a Qwen-t használja
-          aider --model openai/qwen/qwen-2.5-coder-32b-instruct \
+          aider --model openai/qwen/qwen3-coder-480b-a35b-instruct \
                 --message "Itt egy feladat a projekthez: ${{ github.event.issue.body }}. Kérlek végezd el a szükséges módosításokat a fájlokon!" \
                 --yes \
                 --no-git
-
+                
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
