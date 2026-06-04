@@ -47,9 +47,10 @@ class NotificationReceiver : BroadcastReceiver() {
             manager.createNotificationChannel(channel)
         }
 
+        val scheduler = NotificationScheduler(context.applicationContext)
         val notification = NotificationCompat.Builder(context, NotificationScheduler.NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentText(NotificationScheduler.NOTIFICATION_TEXT)
+            .setContentText(scheduler.getCustomNotificationText())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)

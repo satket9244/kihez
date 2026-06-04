@@ -60,6 +60,12 @@ private fun MainScreen(context: Context) {
     var hoursText by remember { mutableStateOf((initialMillis / 3_600_000L).toString()) }
     var minutesText by remember { mutableStateOf(((initialMillis % 3_600_000L) / 60_000L).toString()) }
     var pendingExact by remember { mutableStateOf(false) }
+    var customText by remember { 
+        mutableStateOf(
+            scheduler.getCustomNotificationText().takeIf { scheduler.getCustomNotificationText().isNotEmpty() } 
+                ?: NotificationScheduler.NOTIFICATION_TEXT
+        ) 
+    }
 
     fun hasNotificationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -110,7 +116,7 @@ private fun MainScreen(context: Context) {
         val fixed = if (mode == Mode.FIXED) {
             fixedIntervalMillisOrNull() ?: run {
                 running = false
-                return
+                return@startScheduling
             }
         } else {
             fixedIntervalMillisOrNull() ?: (60L * 60L * 1000L)
@@ -124,6 +130,7 @@ private fun MainScreen(context: Context) {
             return
         }
 
+        scheduler.setCustomNotificationText(customText)
         scheduler.start(mode, fixed)
         running = scheduler.isRunning()
 
@@ -205,6 +212,17 @@ private fun MainScreen(context: Context) {
                     )
                     Text("Random (15 min - 4 hours)")
                 }
+
+                Spacer(Modifier.height(16.dp))
+                Text("Egyéni üzenet")
+                TextField(
+                    value = customText,
+                    onValueChange = { customText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Ha a saját kedvenc kérdésed szeretnéd, hogy ismétlődjön, akkor írd ide azt.")
 
                 Spacer(Modifier.height(20.dp))
                 Button(onClick = { if (running) stopScheduling() else startScheduling() }) {
