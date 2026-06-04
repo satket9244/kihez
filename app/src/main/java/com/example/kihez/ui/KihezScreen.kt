@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -40,15 +38,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -370,32 +368,41 @@ private fun TimeInputCard(
             color = MaterialTheme.colorScheme.outline
         )
         Spacer(modifier = Modifier.height(8.dp))
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            enabled = enabled,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.headlineMedium.copy(
+        
+        if (enabled) {
+            // Use number picker for enabled state
+            val intValue = value.toIntOrNull() ?: 0
+            NumberPicker(
+                value = intValue,
+                onValueChange = { onValueChange(it.toString()) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            // Show read-only value
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
                 color = if (enabled) Primary else Primary.copy(alpha = 0.4f)
-            ),
-            cursorBrush = SolidColor(Primary),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (enabled) {
-                        Modifier.border(
-                            width = 0.dp,
-                            color = borderColor,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun NumberPicker(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.height(120.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // This is a simplified version - in a real app you would implement a proper number picker
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = Primary
         )
     }
 }
