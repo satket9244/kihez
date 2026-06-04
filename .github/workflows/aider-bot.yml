@@ -29,10 +29,16 @@ jobs:
           OPENAI_API_BASE: https://integrate.api.nvidia.com/v1
           OPENAI_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
+          # 1. Összegyűjtjük a legfontosabb forrásfájlokat (Kotlin, Java, XML), hogy az AI lássa őket
+          FILES_TO_EDIT=$(find . -name "*.kt" -o -name "*.java" -o -name "*.xml" | grep -v "/build/" | head -n 15 | tr '\n' ' ')
+          
+          echo "Az AI az alábbi fájlokat kapja meg alapként: $FILES_TO_EDIT"
+          
+          # 2. Elindítjuk az Aidert úgy, hogy a fájlokat már eleve betöltjük a chatbe
           aider --model openai/qwen/qwen3-coder-480b-a35b-instruct \
-                --message "Itt egy feladat a projekthez: ${{ github.event.issue.body }}. Kérlek végezd el a szükséges módosításokat a fájlokon!" \
+                --message "Itt egy feladat a projekthez: ${{ github.event.issue.body }}" \
                 --yes \
-                --no-git
+                $FILES_TO_EDIT
                 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
