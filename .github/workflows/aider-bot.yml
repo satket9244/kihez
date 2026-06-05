@@ -3,14 +3,12 @@ name: Aider GitHub Issue Bot
 on:
   issue_comment:
     types: [created]
-  # Kivettük a sima issues: [opened]-t, helyette egy trükköt alkalmazunk:
-  # Az Aider botot akkor indítjuk el az issue megnyitásakor, ha az Issue-t UTÓLAG módosították (pl. az okosító scriptünk által)
-  issues:
-    types: [edited]
 
 jobs:
   aider:
     runs-on: ubuntu-latest
+    # CSAK akkor indul el, ha a kommentet a GitHub Actions bot írta oda (azaz az okosító végzett)
+    if: github.event.comment.user.login == 'github-actions[bot]'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
