@@ -95,17 +95,18 @@ jobs:
             const fs = require('fs');
             const enhancedBody = fs.readFileSync('enhanced_issue.txt', 'utf8');
             
-            // Lekérjük az eredeti issue-t
-            const { data: issue } = await github.rest.issues.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number
-            });
-
-            // Átírjuk a tartalmát a professzionális verzióra
+            // 1. Átírjuk az Issue leírását a professzionális verzióra
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `_Eredeti felhasználói kérés:_\n> ${issue.body}\n\n${enhancedBody}`
+              body: `_Eredeti felhasználói kérés:_\n> ${context.payload.issue.body}\n\n${enhancedBody}`
+            });
+
+            // 2. Írunk egy kommentet, ami jelzi az Aidernek, hogy indítás!
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: "A műszaki specifikáció elkészült, Aider bot indítása..."
             });
