@@ -28,15 +28,17 @@ jobs:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           OPENAI_API_BASE: https://integrate.api.nvidia.com/v1
           OPENAI_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        # Környezeti változóként adjuk át, így a bash nem próbálja meg parancsként értelmezni a szöveget!
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          # 1. Összegyűjtjük a legfontosabb forrásfájlokat (Kotlin, Java, XML), hogy az AI lássa őket
+          # 1. Összegyűjtjük a legfontosabb forrásfájlokat
           FILES_TO_EDIT=$(find . -name "*.kt" -o -name "*.java" -o -name "*.xml" | grep -v "/build/" | head -n 15 | tr '\n' ' ')
           
           echo "Az AI az alábbi fájlokat kapja meg alapként: $FILES_TO_EDIT"
           
-          # 2. Elindítjuk az Aidert úgy, hogy a fájlokat már eleve betöltjük a chatbe
+          # 2. Elindítjuk az Aidert a biztonságos változóval
           aider --model openai/qwen/qwen3-coder-480b-a35b-instruct \
-                --message "Itt egy feladat a projekthez: ${{ github.event.issue.body }}" \
+                --message "Itt egy feladat a projekthez: $ISSUE_BODY" \
                 --yes \
                 $FILES_TO_EDIT
                 
