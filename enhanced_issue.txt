@@ -1,24 +1,15 @@
 ---
 ### 🛠 Professional Technical Specification
-
-1. **Implement User Preference Storage**
-   - Integrate `DataStore` or `SharedPreferences` to persist the custom message input by the user
-   - Create a data model for the custom message settings
-   - Add a settings repository to handle read/write operations for the custom message
-
-2. **Create Settings UI**
-   - Design a settings screen using Jetpack Compose
-   - Add an `OutlinedTextField` for custom message input
-   - Implement a `ViewModel` to handle the state of the input field and save the user's custom message to persistent storage
-
-3. **Update Notification Logic**
-   - Modify the push notification creation logic to check for a user-defined message
-   - If a custom message is set, replace "Kihez tartozik ez?" with the custom message when showing the notification
-   - Ensure backward compatibility if no custom message is set
-
-4. **Integrate with Existing Project Structure**
-   - Since `AndroidManifest.xml` is the only file provided, ensure the new feature integrates with the manifest permissions and application components if needed
-   - Add necessary permissions for data storage if not already present
+1. **File to Modify**: `KihezScreen.kt`
+2. **Issue**: The `roundToPx()` function is being used without proper import and scoping of `LocalDensity`.
+3. **Fix Required**:
+   - Import `androidx.compose.ui.platform.LocalDensity` at the top of the file.
+   - Wrap all usages of `roundToPx()` within a `with(LocalDensity.current) { ... }` block to provide the `ComposeDensity` scope.
+4. **Lines to Fix**: Around lines 424 and 463 where `roundToPx()` is called.
+5. **Implementation Details**:
+   - Use `with (LocalDensity.current) { ... }` to ensure the correct scope for density-dependent operations.
+   - Ensure that all pixel-based calculations are performed inside this block.
+6. **Jetpack Compose Components**: `LocalDensity`, `ComposeDensity`, `roundToPx()`.
 
 ### 📊 Current Project Context
-The project currently only contains the `AndroidManifest.xml` file, indicating a minimal setup. The implementation will need to introduce new components including a settings screen, data storage handling for user input, and logic to modify the push notification text. The solution should be designed to integrate cleanly into a minimal Android project, assuming other necessary components will be added as the feature expands.
+The project structure only includes the `AndroidManifest.xml` file, indicating a minimal setup. The actual source file `KihezScreen.kt` is not part of the provided structure, but the user explicitly references it. The error occurs due to missing `LocalDensity` import and improper scoping of `roundToPx()` calls. The fix requires importing `LocalDensity` and wrapping the relevant code sections with the appropriate Compose scope.
