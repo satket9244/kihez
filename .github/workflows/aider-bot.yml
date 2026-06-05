@@ -1,8 +1,12 @@
 name: Aider GitHub Issue Bot
 
 on:
+  issue_comment:
+    types: [created]
+  # Kivettük a sima issues: [opened]-t, helyette egy trükköt alkalmazunk:
+  # Az Aider botot akkor indítjuk el az issue megnyitásakor, ha az Issue-t UTÓLAG módosították (pl. az okosító scriptünk által)
   issues:
-    types: [opened, edited]
+    types: [edited]
 
 jobs:
   aider:
