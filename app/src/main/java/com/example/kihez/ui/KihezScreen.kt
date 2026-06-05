@@ -70,6 +70,7 @@ import com.example.kihez.ui.theme.SurfaceContainer
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.ui.platform.LocalDensity
 
 data class KihezUiState(
     val running: Boolean,
@@ -416,12 +417,14 @@ private fun ScrollableNumberPicker(
     
     val state = rememberScrollState(initial = selectedIndex)
     val scope = rememberCoroutineScope()
-    
+
+    val density = LocalDensity.current
+
     val itemHeight = 48.dp
     val halfItemHeight = itemHeight / 2
     val visibleItems = 3
     val centerIndex = 1
-    val totalScrollRange = (itemHeight * (items.size - visibleItems)).roundToPx().toFloat()
+    val totalScrollRange = (itemHeight * (items.size - visibleItems))
     
     Box(
         modifier = modifier
@@ -460,7 +463,9 @@ private fun ScrollableNumberPicker(
                     orientation = Orientation.Vertical
                 )
         ) {
-            val currentValue = (state.value / itemHeight.roundToPx()).coerceIn(0, items.size - 1)
+            val currentValue = with(density) {
+                (state.value / itemHeight.roundToPx()).coerceIn(0, items.size - 1)
+            }
             onValueChange(items[currentValue])
             
             Column(
