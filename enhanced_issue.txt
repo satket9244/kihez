@@ -1,0 +1,24 @@
+---
+### 🛠 Professional Technical Specification
+
+1. **Implement User Preference Storage**
+   - Integrate `DataStore` or `SharedPreferences` to persist the custom message input by the user
+   - Create a data model for the custom message settings
+   - Add a settings repository to handle read/write operations for the custom message
+
+2. **Create Settings UI**
+   - Design a settings screen using Jetpack Compose
+   - Add an `OutlinedTextField` for custom message input
+   - Implement a `ViewModel` to handle the state of the input field and save the user's custom message to persistent storage
+
+3. **Update Notification Logic**
+   - Modify the push notification creation logic to check for a user-defined message
+   - If a custom message is set, replace "Kihez tartozik ez?" with the custom message when showing the notification
+   - Ensure backward compatibility if no custom message is set
+
+4. **Integrate with Existing Project Structure**
+   - Since `AndroidManifest.xml` is the only file provided, ensure the new feature integrates with the manifest permissions and application components if needed
+   - Add necessary permissions for data storage if not already present
+
+### 📊 Current Project Context
+The project currently only contains the `AndroidManifest.xml` file, indicating a minimal setup. The implementation will need to introduce new components including a settings screen, data storage handling for user input, and logic to modify the push notification text. The solution should be designed to integrate cleanly into a minimal Android project, assuming other necessary components will be added as the feature expands.
