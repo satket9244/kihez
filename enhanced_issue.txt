@@ -1,49 +1,38 @@
 ---
 ### 🛠 Professional Technical Specification
 
-Implement a local data persistence feature for treatment tracking with the following components and logic:
+1. **Analyze current notification implementation**:
+   - Locate the existing push notification handling code, likely in a service or receiver class that processes Firebase Cloud Messaging (FCM) or similar push services
+   - Identify where `NotificationCompat.Builder` is used to construct notifications
 
-#### Database Implementation:
-- Create a local SQLite database using Room Persistence Library with a single table:
-  - Table: `TreatmentEntry`
-    - Columns: 
-      - `id` (Primary Key, Auto-increment)
-      - `treatmentDescription` (TEXT) - User's treatment description
-      - `treatmentDate` (TEXT) - Date of treatment in ISO format
-- Ensure database is initialized as a local instance using `Room.databaseBuilder()` with local storage context
+2. **Modify notification layout to support dynamic text sizing**:
+   - Update the notification builder to use `setStyle()` with `BigTextStyle` to enable expandable notifications:
+     ```kotlin
+     val bigTextStyle = NotificationCompat.BigTextStyle()
+         .bigText(longTextFromPushMessage)
+         .setBigContentTitle("Notification Title")
+     
+     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+         .setSmallIcon(R.drawable.ic_notification)
+         .setStyle(bigTextStyle)
+         // other properties
+         .build()
+     ```
+   - Ensure that `bigText()` is used instead of `setContentText()` for dynamic sizing
+   - Implement proper notification channel setup with high priority for better text rendering
 
-#### UI Components in Jetpack Compose:
-- Create a new screen or composable function with:
-  - A `TextField` labeled "Kezelést kaptam" for treatment description input
-  - A `DatePicker` or `TextField` with label "Kezelés ideje" for date input (suggested to use `androidx.compose.material3.DatePicker` for native date picking experience)
-  - A floating action button or save button to store entries
-- Implement proper state management for input fields using `mutableStateOf` for:
-  - Text input state (`text: MutableState<String>`)
-  - Date input state (`selectedDate: MutableState<String>`)
-  - Save state (`isSaved: Boolean`)
-
-#### Data Handling:
-- On save, persist data to local Room database:
-  - Use `@Insert` DAO method to save treatment entries
-- On app start, load saved entries:
-  - Use `@Query` DAO method to retrieve all treatment records
-- Display saved entries in a list format with timestamps
-
-#### Offline Capability:
-- All data must be stored locally using Room, ensuring 100% offline functionality
-- No cloud storage - all database operations must happen on-device
-
-#### AndroidManifest & Navigation:
-- Register new activity/fragment in `AndroidManifest.xml` if needed
-- Add navigation to this new functionality from the main screen in the app
-
-Implement proper state management and lifecycle awareness for data persistence upon app background/foreground transitions.
+3. **Test notification rendering**:
+   - Verify that both short and long text messages display correctly
+   - Confirm that the notification expands to show full text when the message is long
+   - Test on various Android versions to ensure compatibility
 
 ### 📊 Current Project Context
-The project structure indicates a minimal Android app setup with only an `AndroidManifest.xml` present, suggesting this is a new implementation. The manifest file is the standard entry point for Android to understand the app's components, permissions, and initial configurations. The request implies we are building a new feature from scratch, likely requiring new layout and database files to be created in `./app/src/main/` directory, which should be structured as follows:
-- `./app/src/main/java/.../database/` - Room database classes
-- `./app/src/main/java/.../ui/` - UI components for data entry
-- `./app/src/main/java/.../data/` - Data classes for Room entities
-- `./app/src/main/java/.../MainActivity.kt` - Entry point to navigate to the new feature
-The new functionality will require standard Android UI and data classes, with additions to `AndroidManifest.xml` for any new activities or features added.
+
+The project structure only contains the AndroidManifest.xml file, indicating this is a minimal or new project. Since push notifications are handled through Android's notification system, the implementation will likely involve:
+- A service extending `FirebaseMessagingService` or similar push handler
+- Notification builder using `NotificationCompat.Builder`
+- The fix requires modifying how notifications are constructed to support expandable layouts using `BigTextStyle` for dynamic text sizing
+
+The solution involves updating the notification creation logic to use the appropriate BigTextStyle for expandable notifications that adjust to text length.
+
 ---
