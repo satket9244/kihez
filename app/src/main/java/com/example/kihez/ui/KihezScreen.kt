@@ -383,7 +383,7 @@ private fun TimeInputCard(
             color = MaterialTheme.colorScheme.outline
         )
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         if (enabled) {
             // Use scrollable number picker for enabled state
             val intValue = value.toIntOrNull() ?: 0
@@ -414,7 +414,7 @@ private fun ScrollableNumberPicker(
     val minSize = if (maxValue == 23) 0 else 0
     val items = (minSize..maxValue).toList()
     val selectedIndex = items.indexOf(value).coerceIn(0, items.size - 1)
-    
+
     val state = rememberScrollState(initial = selectedIndex)
     val scope = rememberCoroutineScope()
 
@@ -425,7 +425,7 @@ private fun ScrollableNumberPicker(
     val visibleItems = 3
     val centerIndex = 1
     val totalScrollRange = (itemHeight * (items.size - visibleItems))
-    
+
     Box(
         modifier = modifier
             .height(itemHeight * 3)
@@ -448,7 +448,7 @@ private fun ScrollableNumberPicker(
                     )
             )
         }
-        
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -467,7 +467,7 @@ private fun ScrollableNumberPicker(
                 (state.value / itemHeight.roundToPx()).coerceIn(0, items.size - 1)
             }
             onValueChange(items[currentValue])
-            
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
