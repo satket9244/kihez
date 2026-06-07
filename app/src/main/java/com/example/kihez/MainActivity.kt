@@ -40,6 +40,8 @@ private fun MainScreen(context: Context) {
 
     var running by remember { mutableStateOf(scheduler.isRunning()) }
     var mode by remember { mutableStateOf(scheduler.getMode()) }
+    var questionMode by remember { mutableStateOf(scheduler.getQuestionMode()) }
+    var customQuestionText by remember { mutableStateOf(scheduler.getCustomNotificationText()) }
 
     val initialMillis = scheduler.getFixedIntervalMillis()
     var hoursText by remember { mutableStateOf((initialMillis / 3_600_000L).toString()) }
@@ -130,7 +132,9 @@ private fun MainScreen(context: Context) {
                 minutesText = minutesText,
                 fixedValid = fixedIntervalMillisOrNull() != null,
                 hasNotificationPermission = hasNotificationPermission(),
-                canExactAlarms = canExactAlarms()
+                canExactAlarms = canExactAlarms(),
+                questionMode = questionMode,
+                customQuestionText = customQuestionText
             ),
             onHoursChange = { hoursText = it.filter(Char::isDigit) },
             onMinutesChange = { value ->
@@ -147,6 +151,14 @@ private fun MainScreen(context: Context) {
             },
             onToggleRunning = {
                 if (running) stopScheduling() else startScheduling()
+            },
+            onQuestionModeChange = { newMode ->
+                questionMode = newMode
+                scheduler.setQuestionMode(newMode)
+            },
+            onCustomQuestionTextChange = { text ->
+                customQuestionText = text
+                scheduler.setCustomNotificationText(text)
             }
         )
     }

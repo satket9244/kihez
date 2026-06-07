@@ -8,16 +8,29 @@ private val KihezColorScheme = lightColorScheme(
     primary = Primary,
     onPrimary = OnPrimary,
     primaryContainer = PrimaryContainer,
+    onPrimaryContainer = OnPrimaryContainer,
+    secondary = Secondary,
+    onSecondary = OnSecondary,
+    secondaryContainer = SecondaryContainer,
+    onSecondaryContainer = OnSecondaryContainer,
+    tertiary = Tertiary,
+    onTertiary = OnTertiary,
+    tertiaryContainer = TertiaryContainer,
+    onTertiaryContainer = OnTertiaryContainer,
+    background = Surface,
+    onBackground = OnBackground,
     surface = Surface,
     onSurface = OnSurface,
-    onBackground = OnBackground,
     onSurfaceVariant = OnSurfaceVariant,
     surfaceContainer = SurfaceContainer,
     surfaceContainerLow = SurfaceContainerLow,
-    surfaceVariant = SurfaceVariant,
+    surfaceContainerHigh = SurfaceContainerHigh,
     outline = Outline,
     outlineVariant = OutlineVariant,
-    error = Error
+    error = Error,
+    onError = OnError,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer
 )
 
 @Composable

@@ -10,6 +10,7 @@ import kotlin.random.Random
 class NotificationScheduler(private val context: Context) {
 
     enum class Mode { FIXED, RANDOM }
+    enum class QuestionMode { KIHEZ, ZOKKENT, SAJAT }
 
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -29,6 +30,27 @@ class NotificationScheduler(private val context: Context) {
 
     fun setCustomNotificationText(text: String) {
         prefs.edit().putString(KEY_CUSTOM_NOTIFICATION_TEXT, text).apply()
+    }
+
+    fun getQuestionMode(): QuestionMode {
+        val name = prefs.getString(KEY_QUESTION_MODE, QuestionMode.KIHEZ.name) ?: QuestionMode.KIHEZ.name
+        return try {
+            QuestionMode.valueOf(name)
+        } catch (_: Exception) {
+            QuestionMode.KIHEZ
+        }
+    }
+
+    fun setQuestionMode(mode: QuestionMode) {
+        prefs.edit().putString(KEY_QUESTION_MODE, mode.name).apply()
+    }
+
+    fun getNotificationText(): String {
+        return when (getQuestionMode()) {
+            QuestionMode.KIHEZ -> NOTIFICATION_TEXT
+            QuestionMode.ZOKKENT -> MINDFULNESS_QUESTIONS.random()
+            QuestionMode.SAJAT -> getCustomNotificationText().ifBlank { NOTIFICATION_TEXT }
+        }
     }
 
     fun start(mode: Mode, fixedIntervalMillis: Long) {
@@ -101,6 +123,7 @@ class NotificationScheduler(private val context: Context) {
         private const val KEY_FIXED_INTERVAL_MILLIS = "fixed_interval_millis"
         private const val KEY_NEXT_TRIGGER_AT_MILLIS = "next_trigger_at_millis"
         private const val KEY_CUSTOM_NOTIFICATION_TEXT = "custom_notification_text"
+        private const val KEY_QUESTION_MODE = "question_mode"
 
         const val ACTION_ALARM = "com.example.kihez.ACTION_ALARM"
         const val NOTIFICATION_TEXT = "Kihez tartozik ez?"
@@ -111,5 +134,23 @@ class NotificationScheduler(private val context: Context) {
         private const val DEFAULT_FIXED_INTERVAL_MILLIS = 60L * 60L * 1000L
         private const val RANDOM_MIN_MILLIS = 15L * 60L * 1000L
         private const val RANDOM_MAX_MILLIS = 4L * 60L * 60L * 1000L
+
+        val MINDFULNESS_QUESTIONS = listOf(
+            "Kihez tartozik ez?",
+            "Zökkents ki a valóságodból!",
+            "Most hol vagy?",
+            "Mit érzel most a testedben?",
+            "Milyen hangokat hallasz a közeledben?",
+            "Mire gondolsz éppen?",
+            "Vegyél egy mély levegőt. Hogy érzed magad?",
+            "Zökkents ki a valóságodból: mi az igazán valós most?",
+            "Ez a gondolat vagy érzés kihez tartozik?",
+            "Mit tudsz most észrevenni, amit eddig nem vettél észre?",
+            "Mit teszel éppen? Valóban te csinálod?",
+            "Engedd le a vállad, lazítsd el az állkapcsod. Milyen érzés?",
+            "Milyen színű a legközelebbi tárgy, amire ránézel?",
+            "Milyen textúrát érint a kezed éppen?",
+            "Mi van jelen ebben a pillanatban, ha nincs semmi probléma?"
+        )
     }
 }

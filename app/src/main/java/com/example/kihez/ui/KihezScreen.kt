@@ -1,25 +1,24 @@
 package com.example.kihez.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberScrollableState
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +26,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,41 +37,46 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.kihez.scheduler.NotificationScheduler
 import com.example.kihez.scheduler.NotificationScheduler.Mode
 import com.example.kihez.ui.theme.GlassWhite
+import com.example.kihez.ui.theme.ManropeFontFamily
+import com.example.kihez.ui.theme.NewsreaderFontFamily
 import com.example.kihez.ui.theme.OutlineVariant
 import com.example.kihez.ui.theme.Primary
+import com.example.kihez.ui.theme.Secondary
 import com.example.kihez.ui.theme.Surface as KihezSurface
 import com.example.kihez.ui.theme.SurfaceContainer
+import com.example.kihez.ui.theme.Tertiary
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.roundToInt
-import androidx.compose.ui.platform.LocalDensity
 
 data class KihezUiState(
     val running: Boolean,
@@ -79,7 +85,9 @@ data class KihezUiState(
     val minutesText: String,
     val fixedValid: Boolean,
     val hasNotificationPermission: Boolean,
-    val canExactAlarms: Boolean
+    val canExactAlarms: Boolean,
+    val questionMode: NotificationScheduler.QuestionMode,
+    val customQuestionText: String
 )
 
 @Composable
@@ -89,6 +97,8 @@ fun KihezScreen(
     onMinutesChange: (String) -> Unit,
     onModeChange: (Mode) -> Unit,
     onToggleRunning: () -> Unit,
+    onQuestionModeChange: (NotificationScheduler.QuestionMode) -> Unit,
+    onCustomQuestionTextChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -104,9 +114,16 @@ fun KihezScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(top = 24.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(48.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             HeroSection()
+
+            QuestionSelectionCard(
+                questionMode = state.questionMode,
+                customQuestionText = state.customQuestionText,
+                onQuestionModeChange = onQuestionModeChange,
+                onCustomQuestionTextChange = onCustomQuestionTextChange
+            )
 
             IntervalModeCard(
                 mode = state.mode,
@@ -122,7 +139,6 @@ fun KihezScreen(
                     value = state.hoursText,
                     onValueChange = onHoursChange,
                     enabled = state.mode == Mode.FIXED,
-                    isError = state.mode == Mode.FIXED && !state.fixedValid,
                     modifier = Modifier.weight(1f)
                 )
                 TimeInputCard(
@@ -130,7 +146,6 @@ fun KihezScreen(
                     value = state.minutesText,
                     onValueChange = onMinutesChange,
                     enabled = state.mode == Mode.FIXED,
-                    isError = state.mode == Mode.FIXED && !state.fixedValid,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -165,9 +180,9 @@ private fun KihezTopBar() {
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 0.dp,
-                spotColor = Primary.copy(alpha = 0.05f),
-                ambientColor = Primary.copy(alpha = 0.05f)
+                elevation = 4.dp,
+                spotColor = Primary.copy(alpha = 0.03f),
+                ambientColor = Primary.copy(alpha = 0.03f)
             ),
         color = KihezSurface.copy(alpha = 0.8f),
         tonalElevation = 0.dp
@@ -183,13 +198,15 @@ private fun KihezTopBar() {
                 imageVector = Icons.Filled.Spa,
                 contentDescription = null,
                 tint = Primary,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "Kihez tartozik ez?",
-                style = MaterialTheme.typography.displaySmall,
-                color = Primary,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Primary
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -211,10 +228,135 @@ private fun HeroSection() {
         )
         Text(
             text = "Tudatos jelenlét",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displayMedium,
             color = Primary,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun QuestionSelectionCard(
+    questionMode: NotificationScheduler.QuestionMode,
+    customQuestionText: String,
+    onQuestionModeChange: (NotificationScheduler.QuestionMode) -> Unit,
+    onCustomQuestionTextChange: (String) -> Unit
+) {
+    val isKihez = questionMode == NotificationScheduler.QuestionMode.KIHEZ
+    val isZokkent = questionMode == NotificationScheduler.QuestionMode.ZOKKENT
+    val isSajat = questionMode == NotificationScheduler.QuestionMode.SAJAT
+
+    GlassCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Kérdés választása",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Primary
+            )
+            Icon(
+                imageVector = Icons.Outlined.Quiz,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Row 1: Kihez tartozik ez?
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Kihez tartozik ez?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                MindfulSwitch(
+                    checked = isKihez,
+                    onCheckedChange = { if (it) onQuestionModeChange(NotificationScheduler.QuestionMode.KIHEZ) }
+                )
+            }
+
+            // Row 2: Zökkents ki a valóságomból!
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Zökkents ki a valóságomból!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                MindfulSwitch(
+                    checked = isZokkent,
+                    onCheckedChange = { if (it) onQuestionModeChange(NotificationScheduler.QuestionMode.ZOKKENT) }
+                )
+            }
+
+            // Row 3: Saját kérdés
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Saját kérdés",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    MindfulSwitch(
+                        checked = isSajat,
+                        onCheckedChange = { if (it) onQuestionModeChange(NotificationScheduler.QuestionMode.SAJAT) }
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = isSajat,
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300))
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        TextField(
+                            value = customQuestionText,
+                            onValueChange = onCustomQuestionTextChange,
+                            placeholder = {
+                                Text(
+                                    text = "Ide írd a kérdésed...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -231,7 +373,7 @@ private fun IntervalModeCard(
         ) {
             Text(
                 text = "Időköz",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.headlineMedium,
                 color = Primary
             )
             Icon(
@@ -258,7 +400,7 @@ private fun IntervalModeCard(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "(15 perc - 4 óra)",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Normal),
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
@@ -330,8 +472,8 @@ private fun ModeToggleLabel(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
             color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline,
             textAlign = TextAlign.Center
         )
@@ -349,13 +491,16 @@ private fun GlassCard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = Primary.copy(alpha = 0.05f),
-                ambientColor = Primary.copy(alpha = 0.05f)
+                spotColor = Primary.copy(alpha = 0.08f),
+                ambientColor = Primary.copy(alpha = 0.08f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = GlassWhite
     ) {
-        Column(modifier = Modifier.padding(24.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+        ) {
             content()
         }
     }
@@ -367,128 +512,181 @@ private fun TimeInputCard(
     value: String,
     onValueChange: (String) -> Unit,
     enabled: Boolean,
-    isError: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = when {
-        isError -> MaterialTheme.colorScheme.error
-        enabled -> Color.Transparent
-        else -> Color.Transparent
-    }
+    val alphaState by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.4f,
+        animationSpec = tween(300),
+        label = "timeInputAlpha"
+    )
 
-    GlassCard(modifier = modifier) {
+    GlassCard(
+        modifier = modifier
+            .graphicsLayer(alpha = alphaState)
+    ) {
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (enabled) {
-            // Use scrollable number picker for enabled state
             val intValue = value.toIntOrNull() ?: 0
-            ScrollableNumberPicker(
-                value = intValue,
+            WheelPicker(
+                selectedValue = intValue,
                 onValueChange = { onValueChange(it.toString()) },
-                maxValue = if (label == "Óra") 23 else 59,
+                maxLimit = if (label == "Óra") 23 else 59,
+                label = label,
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
-            // Show read-only value
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (enabled) Primary else Primary.copy(alpha = 0.4f)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (value.isBlank()) "0" else value,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = NewsreaderFontFamily,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Primary.copy(alpha = 0.4f),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ScrollableNumberPicker(
-    value: Int,
+fun WheelPicker(
+    selectedValue: Int,
     onValueChange: (Int) -> Unit,
-    maxValue: Int,
+    maxLimit: Int,
+    label: String,
     modifier: Modifier = Modifier
 ) {
-    val minSize = if (maxValue == 23) 0 else 0
-    val items = (minSize..maxValue).toList()
-    val selectedIndex = items.indexOf(value).coerceIn(0, items.size - 1)
+    val items = remember(maxLimit) { (0..maxLimit).toList() }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedValue)
+    val coroutineScope = rememberCoroutineScope()
+    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    val state = rememberScrollState(initial = selectedIndex)
-    val scope = rememberCoroutineScope()
+    LaunchedEffect(listState.firstVisibleItemIndex) {
+        val stabilizedIndex = listState.firstVisibleItemIndex
+        if (stabilizedIndex in items.indices && stabilizedIndex != selectedValue) {
+            onValueChange(items[stabilizedIndex])
+        }
+    }
 
-    val density = LocalDensity.current
+    LaunchedEffect(selectedValue) {
+        if (selectedValue in items.indices && selectedValue != listState.firstVisibleItemIndex) {
+            listState.animateScrollToItem(selectedValue)
+        }
+    }
 
-    val itemHeight = 48.dp
-    val halfItemHeight = itemHeight / 2
-    val visibleItems = 3
-    val centerIndex = 1
-    val totalScrollRange = (itemHeight * (items.size - visibleItems))
+    val itemHeight = 40.dp
 
     Box(
         modifier = modifier
             .height(itemHeight * 3)
-            .fillMaxWidth()
+            .fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
-        // Center indicator
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(itemHeight)
-                .offset(y = itemHeight)
-                .zIndex(1f)
-        ) {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .border(
-                        width = 2.dp,
-                        color = Primary.copy(alpha = 0.5f)
-                    )
-            )
-        }
+                .background(Primary.copy(alpha = 0.03f), RoundedCornerShape(8.dp))
+                .border(1.dp, Primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+        )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .scrollable(
-                    state = rememberScrollableState { delta ->
-                        scope.launch {
-                            state.scrollBy(-delta)
+        LazyColumn(
+            state = listState,
+            flingBehavior = snapFlingBehavior,
+            contentPadding = PaddingValues(vertical = itemHeight),
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            items(items.size) { index ->
+                val itemValue = items[index]
+                val itemText = if (itemValue < 10) "0$itemValue" else itemValue.toString()
+
+                val isSelected = listState.firstVisibleItemIndex == index
+
+                val scale by remember {
+                    derivedStateOf {
+                        val layoutInfo = listState.layoutInfo
+                        val visibleItem = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+                        if (visibleItem != null) {
+                            val itemCenter = visibleItem.offset + visibleItem.size / 2f
+                            val containerCenter = layoutInfo.viewportEndOffset / 2f
+                            val distance = abs(itemCenter - containerCenter)
+                            val fraction = (1f - (distance / visibleItem.size.toFloat())).coerceIn(0f, 1f)
+                            1.0f + 0.25f * fraction
+                        } else {
+                            if (isSelected) 1.25f else 1.0f
                         }
-                        delta
-                    },
-                    orientation = Orientation.Vertical
-                )
-        ) {
-            val currentValue = with(density) {
-                (state.value / itemHeight.roundToPx()).coerceIn(0, items.size - 1)
-            }
-            onValueChange(items[currentValue])
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = halfItemHeight, bottom = halfItemHeight)
-            ) {
-                repeat(items.size) { index ->
-                    val itemValue = items[index]
-                    val itemText = if (itemValue < 10) "0$itemValue" else itemValue.toString()
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(itemHeight)
-                            .padding(4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = itemText,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = Primary
-                        )
                     }
+                }
+
+                val alpha by remember {
+                    derivedStateOf {
+                        val layoutInfo = listState.layoutInfo
+                        val visibleItem = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+                        if (visibleItem != null) {
+                            val itemCenter = visibleItem.offset + visibleItem.size / 2f
+                            val containerCenter = layoutInfo.viewportEndOffset / 2f
+                            val distance = abs(itemCenter - containerCenter)
+                            val fraction = (1f - (distance / visibleItem.size.toFloat())).coerceIn(0f, 1f)
+                            0.4f + 0.6f * fraction
+                        } else {
+                            if (isSelected) 1.0f else 0.4f
+                        }
+                    }
+                }
+
+                val fontStyle = if (isSelected) {
+                    MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = NewsreaderFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary
+                    )
+                } else {
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = ManropeFontFamily,
+                        fontWeight = FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .height(itemHeight)
+                        .fillMaxWidth()
+                        .clickable {
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(index)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = itemText,
+                        style = fontStyle,
+                        modifier = Modifier
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                alpha = alpha
+                            ),
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -519,7 +717,10 @@ private fun PrimaryActionButton(
     ) {
         Text(
             text = if (running) "Értesítések kikapcsolása" else "Értesítések bekapcsolása",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Medium,
+                color = Color.White
+            )
         )
     }
 }
@@ -536,53 +737,77 @@ private fun StatusSection(
     ) {
         FadeDivider()
 
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatusChip(
+                        isActive = running,
+                        activeContainerColor = Primary.copy(alpha = 0.05f),
+                        activeBorderColor = Primary.copy(alpha = 0.2f),
+                        activeContentColor = Primary,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        inactiveContentColor = MaterialTheme.colorScheme.outline,
+                        icon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (running) Tertiary else MaterialTheme.colorScheme.error)
+                            )
+                        },
+                        label = if (running) "Aktív" else "Inaktív"
+                    )
+
+                    StatusChip(
+                        isActive = hasNotificationPermission,
+                        activeContainerColor = Primary.copy(alpha = 0.05f),
+                        activeBorderColor = Primary.copy(alpha = 0.2f),
+                        activeContentColor = Primary,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                        inactiveContentColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.NotificationsActive,
+                                contentDescription = null,
+                                tint = if (hasNotificationPermission) Primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        label = "Értesítések bekapcsolva"
+                    )
+                }
+
                 StatusChip(
-                    icon = {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (running) Primary else MaterialTheme.colorScheme.error
-                                )
-                        )
-                    },
-                    label = if (running) "Aktív" else "Inaktív"
-                )
-                StatusChip(
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.NotificationsActive,
-                            contentDescription = null,
-                            tint = if (hasNotificationPermission) Primary else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    label = "Értesítések bekapcsolva",
-                    muted = !hasNotificationPermission
-                )
-                StatusChip(
+                    isActive = canExactAlarms,
+                    activeContainerColor = Tertiary.copy(alpha = 0.05f),
+                    activeBorderColor = Tertiary.copy(alpha = 0.2f),
+                    activeContentColor = Tertiary,
+                    inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    inactiveContentColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                     icon = {
                         Icon(
                             imageVector = Icons.Filled.Timer,
                             contentDescription = null,
-                            tint = if (canExactAlarms) Primary else MaterialTheme.colorScheme.outline,
+                            tint = if (canExactAlarms) Tertiary else MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp)
                         )
                     },
-                    label = "Precíziós riasztás",
-                    muted = !canExactAlarms
+                    label = "Precíziós riasztás"
                 )
             }
         }
@@ -609,19 +834,25 @@ private fun FadeDivider() {
 
 @Composable
 private fun StatusChip(
+    isActive: Boolean,
+    activeContainerColor: Color,
+    activeBorderColor: Color,
+    activeContentColor: Color,
+    inactiveContainerColor: Color,
+    inactiveBorderColor: Color,
+    inactiveContentColor: Color,
     icon: @Composable () -> Unit,
-    label: String,
-    muted: Boolean = false
+    label: String
 ) {
+    val containerColor = if (isActive) activeContainerColor else inactiveContainerColor
+    val borderColor = if (isActive) activeBorderColor else inactiveBorderColor
+    val contentColor = if (isActive) activeContentColor else inactiveContentColor
+
     Row(
         modifier = Modifier
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .border(
-                width = 1.dp,
-                color = OutlineVariant.copy(alpha = 0.2f),
-                shape = CircleShape
-            )
+            .background(containerColor)
+            .border(width = 1.dp, color = borderColor, shape = CircleShape)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -633,10 +864,50 @@ private fun StatusChip(
                 fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.85f,
                 letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing * 0.5f
             ),
-            color = if (muted) MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
-            else MaterialTheme.colorScheme.outline,
+            color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun MindfulSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val switchWidth = 44.dp
+    val switchHeight = 24.dp
+    val thumbSize = 20.dp
+
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 20.dp else 2.dp,
+        animationSpec = tween(300),
+        label = "thumbOffset"
+    )
+
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) Primary else MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = tween(300),
+        label = "trackColor"
+    )
+
+    Box(
+        modifier = modifier
+            .size(switchWidth, switchHeight)
+            .clip(CircleShape)
+            .background(trackColor)
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 2.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(thumbSize)
+                .shadow(2.dp, CircleShape)
+                .background(Color.White, CircleShape)
         )
     }
 }
