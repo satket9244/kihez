@@ -1,38 +1,32 @@
 ---
 ### 🛠 Professional Technical Specification
 
-1. **Analyze current notification implementation**:
-   - Locate the existing push notification handling code, likely in a service or receiver class that processes Firebase Cloud Messaging (FCM) or similar push services
-   - Identify where `NotificationCompat.Builder` is used to construct notifications
+1. **Modify Notification Channel Configuration:**
+   - Update `NotificationChannel` creation in the application to use `NotificationManager.IMPORTANCE_HIGH` priority
+   - Ensure channel is deleted and recreated if already exists to apply new importance level
 
-2. **Modify notification layout to support dynamic text sizing**:
-   - Update the notification builder to use `setStyle()` with `BigTextStyle` to enable expandable notifications:
-     ```kotlin
-     val bigTextStyle = NotificationCompat.BigTextStyle()
-         .bigText(longTextFromPushMessage)
-         .setBigContentTitle("Notification Title")
-     
-     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-         .setSmallIcon(R.drawable.ic_notification)
-         .setStyle(bigTextStyle)
-         // other properties
-         .build()
-     ```
-   - Ensure that `bigText()` is used instead of `setContentText()` for dynamic sizing
-   - Implement proper notification channel setup with high priority for better text rendering
+2. **Update Notification Builder Configuration:**
+   - Set `NotificationCompat.Builder` priority to `NotificationCompat.PRIORITY_HIGH` using `setPriority()` method
+   - Implement `NotificationCompat.BigTextStyle` with `bigText()` method to display full notification content immediately
+   - Configure the big text style to show complete message without truncation
 
-3. **Test notification rendering**:
-   - Verify that both short and long text messages display correctly
-   - Confirm that the notification expands to show full text when the message is long
-   - Test on various Android versions to ensure compatibility
+3. **File Modification Requirements:**
+   - Locate notification creation logic in either `NotificationScheduler` or `NotificationReceiver` classes
+   - Apply modifications to ensure expanded notification layout is used by default
+   - Implement proper notification styling with `BigTextStyle` to show full text content immediately upon notification arrival
+
+4. **Implementation Details:**
+   - Use `NotificationCompat.BigTextStyle().bigText(message)` to display full message text
+   - Ensure notification channel importance is set to `IMPORTANCE_HIGH`
+   - Set notification priority to `PRIORITY_HIGH` for immediate full expansion
 
 ### 📊 Current Project Context
 
-The project structure only contains the AndroidManifest.xml file, indicating this is a minimal or new project. Since push notifications are handled through Android's notification system, the implementation will likely involve:
-- A service extending `FirebaseMessagingService` or similar push handler
-- Notification builder using `NotificationCompat.Builder`
-- The fix requires modifying how notifications are constructed to support expandable layouts using `BigTextStyle` for dynamic text sizing
+The project structure shows only the AndroidManifest.xml file location, indicating this is an Android project. The request requires modifications to notification handling components, likely in the notification service or receiver classes that would be implemented in the codebase. The user wants push notifications to display fully expanded text immediately without user interaction. This requires changes to:
+- Notification channel importance settings
+- Notification builder priority configuration  
+- Notification styling with BigTextStyle for immediate full text display
+- Proper notification expansion behavior
 
-The solution involves updating the notification creation logic to use the appropriate BigTextStyle for expandable notifications that adjust to text length.
-
+The implementation should ensure notifications are fully visible upon arrival by setting appropriate priority levels and using expanded notification layouts.
 ---
