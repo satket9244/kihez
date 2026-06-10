@@ -1,49 +1,32 @@
 ---
 ### 🛠 Professional Technical Specification
 
-Implement a local data persistence feature for treatment tracking with the following components and logic:
+1. **Modify Notification Channel Configuration:**
+   - Update `NotificationChannel` creation in the application to use `NotificationManager.IMPORTANCE_HIGH` priority
+   - Ensure channel is deleted and recreated if already exists to apply new importance level
 
-#### Database Implementation:
-- Create a local SQLite database using Room Persistence Library with a single table:
-  - Table: `TreatmentEntry`
-    - Columns: 
-      - `id` (Primary Key, Auto-increment)
-      - `treatmentDescription` (TEXT) - User's treatment description
-      - `treatmentDate` (TEXT) - Date of treatment in ISO format
-- Ensure database is initialized as a local instance using `Room.databaseBuilder()` with local storage context
+2. **Update Notification Builder Configuration:**
+   - Set `NotificationCompat.Builder` priority to `NotificationCompat.PRIORITY_HIGH` using `setPriority()` method
+   - Implement `NotificationCompat.BigTextStyle` with `bigText()` method to display full notification content immediately
+   - Configure the big text style to show complete message without truncation
 
-#### UI Components in Jetpack Compose:
-- Create a new screen or composable function with:
-  - A `TextField` labeled "Kezelést kaptam" for treatment description input
-  - A `DatePicker` or `TextField` with label "Kezelés ideje" for date input (suggested to use `androidx.compose.material3.DatePicker` for native date picking experience)
-  - A floating action button or save button to store entries
-- Implement proper state management for input fields using `mutableStateOf` for:
-  - Text input state (`text: MutableState<String>`)
-  - Date input state (`selectedDate: MutableState<String>`)
-  - Save state (`isSaved: Boolean`)
+3. **File Modification Requirements:**
+   - Locate notification creation logic in either `NotificationScheduler` or `NotificationReceiver` classes
+   - Apply modifications to ensure expanded notification layout is used by default
+   - Implement proper notification styling with `BigTextStyle` to show full text content immediately upon notification arrival
 
-#### Data Handling:
-- On save, persist data to local Room database:
-  - Use `@Insert` DAO method to save treatment entries
-- On app start, load saved entries:
-  - Use `@Query` DAO method to retrieve all treatment records
-- Display saved entries in a list format with timestamps
-
-#### Offline Capability:
-- All data must be stored locally using Room, ensuring 100% offline functionality
-- No cloud storage - all database operations must happen on-device
-
-#### AndroidManifest & Navigation:
-- Register new activity/fragment in `AndroidManifest.xml` if needed
-- Add navigation to this new functionality from the main screen in the app
-
-Implement proper state management and lifecycle awareness for data persistence upon app background/foreground transitions.
+4. **Implementation Details:**
+   - Use `NotificationCompat.BigTextStyle().bigText(message)` to display full message text
+   - Ensure notification channel importance is set to `IMPORTANCE_HIGH`
+   - Set notification priority to `PRIORITY_HIGH` for immediate full expansion
 
 ### 📊 Current Project Context
-The project structure indicates a minimal Android app setup with only an `AndroidManifest.xml` present, suggesting this is a new implementation. The manifest file is the standard entry point for Android to understand the app's components, permissions, and initial configurations. The request implies we are building a new feature from scratch, likely requiring new layout and database files to be created in `./app/src/main/` directory, which should be structured as follows:
-- `./app/src/main/java/.../database/` - Room database classes
-- `./app/src/main/java/.../ui/` - UI components for data entry
-- `./app/src/main/java/.../data/` - Data classes for Room entities
-- `./app/src/main/java/.../MainActivity.kt` - Entry point to navigate to the new feature
-The new functionality will require standard Android UI and data classes, with additions to `AndroidManifest.xml` for any new activities or features added.
+
+The project structure shows only the AndroidManifest.xml file location, indicating this is an Android project. The request requires modifications to notification handling components, likely in the notification service or receiver classes that would be implemented in the codebase. The user wants push notifications to display fully expanded text immediately without user interaction. This requires changes to:
+- Notification channel importance settings
+- Notification builder priority configuration  
+- Notification styling with BigTextStyle for immediate full text display
+- Proper notification expansion behavior
+
+The implementation should ensure notifications are fully visible upon arrival by setting appropriate priority levels and using expanded notification layouts.
 ---
