@@ -12,6 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +28,7 @@ import com.example.kihez.scheduler.NotificationScheduler
 import com.example.kihez.scheduler.NotificationScheduler.Mode
 import com.example.kihez.ui.KihezScreen
 import com.example.kihez.ui.KihezUiState
+import com.example.kihez.ui.QuestionsListScreen
 import com.example.kihez.ui.theme.KihezTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,6 +47,7 @@ private fun MainScreen(context: Context) {
     var mode by remember { mutableStateOf(scheduler.getMode()) }
     var questionMode by remember { mutableStateOf(scheduler.getQuestionMode()) }
     var customQuestionText by remember { mutableStateOf(scheduler.getCustomNotificationText()) }
+    var showQuestionsList by remember { mutableStateOf(false) }
 
     val initialMillis = scheduler.getFixedIntervalMillis()
     var hoursText by remember { mutableStateOf((initialMillis / 3_600_000L).toString()) }
@@ -123,43 +129,66 @@ private fun MainScreen(context: Context) {
     }
 
     KihezTheme {
-        KihezScreen(
-            modifier = Modifier.fillMaxSize(),
-            state = KihezUiState(
-                running = running,
-                mode = mode,
-                hoursText = hoursText,
-                minutesText = minutesText,
-                fixedValid = fixedIntervalMillisOrNull() != null,
-                hasNotificationPermission = hasNotificationPermission(),
-                canExactAlarms = canExactAlarms(),
-                questionMode = questionMode,
-                customQuestionText = customQuestionText
-            ),
-            onHoursChange = { hoursText = it.filter(Char::isDigit) },
-            onMinutesChange = { value ->
-                val digits = value.filter(Char::isDigit)
-                minutesText = if (digits.isEmpty()) {
-                    ""
+        AnimatedContent(
+            targetState = showQuestionsList,
+            transitionSpec = {
+                if (targetState) {
+                    slideInHorizontally(initialOffsetX = { it }) togetherWith
+                        slideOutHorizontally(targetOffsetX = { -it })
                 } else {
-                    (digits.toIntOrNull() ?: 0).coerceIn(0, 59).toString()
+                    slideInHorizontally(initialOffsetX = { -it }) togetherWith
+                        slideOutHorizontally(targetOffsetX = { it })
                 }
             },
-            onModeChange = { newMode ->
-                mode = newMode
-                if (running) startScheduling()
-            },
-            onToggleRunning = {
-                if (running) stopScheduling() else startScheduling()
-            },
-            onQuestionModeChange = { newMode ->
-                questionMode = newMode
-                scheduler.setQuestionMode(newMode)
-            },
-            onCustomQuestionTextChange = { text ->
-                customQuestionText = text
-                scheduler.setCustomNotificationText(text)
+            label = "screenTransition"
+        ) { showingQuestions ->
+            if (showingQuestions) {
+                QuestionsListScreen(
+                    onBack = { showQuestionsList = false },
+                    questions = NotificationScheduler.MINDFULNESS_QUESTIONS,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                KihezScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    state = KihezUiState(
+                        running = running,
+                        mode = mode,
+                        hoursText = hoursText,
+                        minutesText = minutesText,
+                        fixedValid = fixedIntervalMillisOrNull() != null,
+                        hasNotificationPermission = hasNotificationPermission(),
+                        canExactAlarms = canExactAlarms(),
+                        questionMode = questionMode,
+                        customQuestionText = customQuestionText
+                    ),
+                    onHoursChange = { hoursText = it.filter(Char::isDigit) },
+                    onMinutesChange = { value ->
+                        val digits = value.filter(Char::isDigit)
+                        minutesText = if (digits.isEmpty()) {
+                            ""
+                        } else {
+                            (digits.toIntOrNull() ?: 0).coerceIn(0, 59).toString()
+                        }
+                    },
+                    onModeChange = { newMode ->
+                        mode = newMode
+                        if (running) startScheduling()
+                    },
+                    onToggleRunning = {
+                        if (running) stopScheduling() else startScheduling()
+                    },
+                    onQuestionModeChange = { newMode ->
+                        questionMode = newMode
+                        scheduler.setQuestionMode(newMode)
+                    },
+                    onCustomQuestionTextChange = { text ->
+                        customQuestionText = text
+                        scheduler.setCustomNotificationText(text)
+                    },
+                    onNavigateToQuestions = { showQuestionsList = true }
+                )
             }
-        )
+        }
     }
 }

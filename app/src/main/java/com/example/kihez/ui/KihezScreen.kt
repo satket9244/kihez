@@ -7,6 +7,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,12 +29,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Spa
@@ -41,6 +45,7 @@ import androidx.compose.material.icons.outlined.Quiz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,8 +55,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +81,8 @@ import com.example.kihez.ui.theme.Primary
 import com.example.kihez.ui.theme.Secondary
 import com.example.kihez.ui.theme.Surface as KihezSurface
 import com.example.kihez.ui.theme.SurfaceContainer
+import com.example.kihez.ui.theme.SurfaceContainerHigh
+import com.example.kihez.ui.theme.SurfaceContainerLow
 import com.example.kihez.ui.theme.Tertiary
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -99,6 +108,7 @@ fun KihezScreen(
     onToggleRunning: () -> Unit,
     onQuestionModeChange: (NotificationScheduler.QuestionMode) -> Unit,
     onCustomQuestionTextChange: (String) -> Unit,
+    onNavigateToQuestions: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -106,7 +116,7 @@ fun KihezScreen(
             .fillMaxSize()
             .background(KihezSurface)
     ) {
-        KihezTopBar()
+        KihezTopBar(onNavigateToQuestions = onNavigateToQuestions)
 
         Column(
             modifier = Modifier
@@ -175,7 +185,7 @@ fun KihezScreen(
 }
 
 @Composable
-private fun KihezTopBar() {
+private fun KihezTopBar(onNavigateToQuestions: () -> Unit = {}) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -190,26 +200,45 @@ private fun KihezTopBar() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Filled.Spa,
-                contentDescription = null,
-                tint = Primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Kihez tartozik ez?",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Primary
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            // Left: quiz button to navigate to questions list
+            IconButton(onClick = onNavigateToQuestions) {
+                Icon(
+                    imageVector = Icons.Outlined.Quiz,
+                    contentDescription = "Kérdések listája",
+                    tint = Primary,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            // Center: app title
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Spa,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Kihez tartozik ez?",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Primary
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Right: invisible spacer to balance the layout
+            Spacer(modifier = Modifier.size(48.dp))
         }
     }
 }
@@ -245,6 +274,15 @@ private fun QuestionSelectionCard(
     val isKihez = questionMode == NotificationScheduler.QuestionMode.KIHEZ
     val isZokkent = questionMode == NotificationScheduler.QuestionMode.ZOKKENT
     val isSajat = questionMode == NotificationScheduler.QuestionMode.SAJAT
+
+    var showSuccessMessage by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showSuccessMessage) {
+        if (showSuccessMessage) {
+            kotlinx.coroutines.delay(2000L)
+            showSuccessMessage = false
+        }
+    }
 
     GlassCard {
         Row(
@@ -353,6 +391,44 @@ private fun QuestionSelectionCard(
                             ),
                             textStyle = MaterialTheme.typography.bodyMedium
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                if (customQuestionText.isNotBlank()) {
+                                    onCustomQuestionTextChange(customQuestionText)
+                                    showSuccessMessage = true
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            enabled = customQuestionText.isNotBlank()
+                        ) {
+                            Text(
+                                text = "hozzáadom a listához",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = showSuccessMessage,
+                            enter = fadeIn(tween(300)),
+                            exit = fadeOut(tween(300))
+                        ) {
+                            Text(
+                                text = "Sikeresen a listához adva!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Tertiary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -868,6 +944,167 @@ private fun StatusChip(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+fun QuestionsListScreen(
+    onBack: () -> Unit,
+    questions: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(KihezSurface)
+    ) {
+        // Top bar with back button
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 4.dp,
+                    spotColor = Primary.copy(alpha = 0.03f),
+                    ambientColor = Primary.copy(alpha = 0.03f)
+                ),
+            color = KihezSurface.copy(alpha = 0.8f),
+            tonalElevation = 0.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBackIosNew,
+                        contentDescription = "Vissza",
+                        tint = Primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Quiz,
+                        contentDescription = null,
+                        tint = Primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Kérdések",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Primary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Balance spacer
+                Spacer(modifier = Modifier.size(48.dp))
+            }
+        }
+
+        // Questions count header
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "${questions.size} kérdés",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Text(
+                text = "Tudatos jelenlét",
+                style = MaterialTheme.typography.displayMedium,
+                color = Primary,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // Questions list
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(questions) { index, question ->
+                QuestionItem(
+                    index = index + 1,
+                    question = question
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuestionItem(
+    index: Int,
+    question: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = Primary.copy(alpha = 0.06f),
+                ambientColor = Primary.copy(alpha = 0.06f)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        color = GlassWhite
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Number badge
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Primary.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = index.toString(),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Primary
+                    )
+                )
+            }
+
+            // Question text
+            Text(
+                text = question,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = ManropeFontFamily,
+                    fontWeight = FontWeight.Medium
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
