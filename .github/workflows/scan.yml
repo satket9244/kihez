@@ -3,7 +3,7 @@ name: NVIDIA API Health Check
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"   # óránként is lefuthat, ha akarod
+    - cron: "0 * * * *"   # hourly
 
 jobs:
   check_nvidia_api:
