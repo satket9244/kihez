@@ -1,0 +1,96 @@
+name: NVIDIA API Health Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"   # óránként is lefuthat, ha akarod
+
+jobs:
+  check_nvidia_api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test NVIDIA API endpoint(s)
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          cat << 'EOF' > check_api.py
+          import os, json, time, urllib.request, urllib.error
+
+          api_key = os.environ.get("NVIDIA_API_KEY", "")
+          endpoint = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+          models = [
+              "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+              "qwen/qwen3-coder-480b-a35b-instruct",
+          ]
+
+          report = []
+
+          if not api_key:
+              report.append("❌ NVIDIA_API_KEY secret is EMPTY or missing!")
+          else:
+              report.append(f"🔑 API key present, length={len(api_key)}")
+
+          for model in models:
+              payload = {
+                  "model": model,
+                  "messages": [{"role": "user", "content": "Reply with just the word OK."}],
+                  "max_tokens": 5,
+                  "temperature": 0
+              }
+              headers = {
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json",
+                  "Accept": "application/json"
+              }
+              req = urllib.request.Request(
+                  endpoint,
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers=headers,
+                  method="POST"
+              )
+
+              start = time.time()
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      elapsed = round(time.time() - start, 2)
+                      body = json.loads(resp.read().decode("utf-8"))
+                      content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+                      report.append(f"✅ {model}: HTTP {resp.status} in {elapsed}s -> '{content.strip()}'")
+              except urllib.error.HTTPError as e:
+                  elapsed = round(time.time() - start, 2)
+                  err_body = e.read().decode("utf-8", errors="ignore")[:300]
+                  status = e.code
+                  if status == 429:
+                      msg = "RATE LIMITED (429) - sorban állás / kvóta túllépve"
+                  elif status == 401 or status == 403:
+                      msg = "AUTH ERROR - API kulcs hibás vagy lejárt"
+                  elif status == 404:
+                      msg = "NOT FOUND - modell név vagy endpoint hibás"
+                  elif status in (500, 502, 503, 504):
+                      msg = "SERVER ERROR - NVIDIA oldali szolgáltatás instabil/túlterhelt"
+                  else:
+                      msg = f"HTTP error {status}"
+                  report.append(f"⚠️ {model}: {msg} (HTTP {status}, {elapsed}s)
+   Body: {err_body}")
+              except urllib.error.URLError as e:
+                  elapsed = round(time.time() - start, 2)
+                  report.append(f"❌ {model}: NETWORK/TIMEOUT error after {elapsed}s -> {e}")
+              except Exception as e:
+                  report.append(f"❌ {model}: Unexpected error -> {e}")
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          text = "
+".join(report)
+          print(text)
+          if summary_path:
+              with open(summary_path, "a") as f:
+                  f.write("## NVIDIA API Health Check Report
+
+")
+                  for line in report:
+                      f.write(f"- {line}
+")
+          EOF
+
+          python3 check_api.py
