@@ -3,8 +3,8 @@ name: NVIDIA API Health Check
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 * * * *"   # hourly
-
+    - cron: "0 * * * *"
+    
 jobs:
   check_nvidia_api:
     runs-on: ubuntu-latest
